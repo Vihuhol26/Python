@@ -1,84 +1,92 @@
-from fastapi import FastAPI, Query
-from pydantic import BaseModel
+from flask import Flask, request, jsonify
 import random
 
-app = FastAPI()
+app = Flask(__name__)
 
 # Возможные операции
-operations = ["+", "-", "*", "/"]
-
-# Модель запроса для POST
-class NumberRequest(BaseModel):
-    jsonParam: float
+operations = ["sum", "sub", "mul", "div"]
 
 # GET 
-@app.get("/number/")
-def get_number(param: float = Query(...)):
+@app.route('/number/', methods=['GET'])
+def get_number():
+    param = request.args.get('param', type=float)
     random_number = random.uniform(1, 100)
     result = random_number * param
-    return {"operation": "multiply", "random_number": random_number, "param": param, "result": result}
+    return jsonify({
+        "operation": "mul",
+        "random_number": random_number,
+        "param": param,
+        "result": result
+    })
 
 # POST 
-@app.post("/number/")
-def post_number(data: NumberRequest):
+@app.route('/number/', methods=['POST'])
+def post_number():
+    data = request.get_json()
+    json_param = data.get("jsonParam")
     random_number = random.uniform(1, 100)
     operation = random.choice(operations)
 
-    if operation == "+":
-        result = random_number + data.jsonParam
-    elif operation == "-":
-        result = random_number - data.jsonParam
-    elif operation == "*":
-        result = random_number * data.jsonParam
-    elif operation == "/":
-        result = random_number / data.jsonParam if data.jsonParam != 0 else "undefined"
+    if operation == "sum":
+        result = random_number + json_param
+    elif operation == "sub":
+        result = random_number - json_param
+    elif operation == "mul":
+        result = random_number * json_param
+    elif operation == "div":
+        result = random_number / json_param if json_param != 0 else "undefined"
 
-    return {
+    return jsonify({
         "random_number": random_number,
-        "jsonParam": data.jsonParam,
+        "jsonParam": json_param,
         "operation": operation,
         "result": result
-    }
+    })
 
 # DELETE 
-@app.delete("/number/")
+@app.route('/number/', methods=['DELETE'])
 def delete_number():
     random_number = random.uniform(1, 100)
     another_number = random.uniform(1, 10)
     operation = random.choice(operations)
 
-    if operation == "+":
+    if operation == "sum":
         result = random_number + another_number
-    elif operation == "-":
+    elif operation == "sub":
         result = random_number - another_number
-    elif operation == "*":
+    elif operation == "mul":
         result = random_number * another_number
-    elif operation == "/":
+    elif operation == "div":
         result = random_number / another_number if another_number != 0 else "undefined"
 
-    return {
+    return jsonify({
         "random_number": random_number,
         "another_number": another_number,
         "operation": operation,
         "result": result
-    }
+    })
 
-# step1 = 4 * 92.41465259095054  → 369.65861036380215
+if __name__ == '__main__':
+    app.run(debug=True)
 
-# step2 = step1 - 5  → 369.65861036380215 - 5 = 364.65861036380215
+# step1 = 5.0 * 68.47761488495044 → 342.3880744247522
 
-# step3 = step2 + 8.975019971451486  → 364.65861036380215 + 8.975019971451486
-# = 373.6336303352536
+# step2 = step1 - 3 → 342.3880744247522 - 3 = 339.3880744247522
 
-# final = int(step3)  → int(373.6336303352536) = 373
+# step3 = step2 + (75.43374824030951 / 9.033400806791706)
+#       = 339.3880744247522 + 8.350537062807522
+#       = 347.7386114875597
+
+# final = int(step3) → int(347.7386114875597) = 347
 
 # CURL
 
-# step1 = 64.99956944412745 * 5.0  → 324.99784722063725
+# step1 = 91.82320910642642 * 5  → 459.1160455321321
 
-# step2 = step1 - 3.0  → 324.99784722063725 - 3.0 = 321.99784722063725
+# step2 = step1 * 3  → 459.1160455321321 * 3 = 1377.3481365963964
 
-# step3 = step2 * 7.317109409773659  → 321.99784722063725 * 7.317109409773659
-# = 2355.6407738874397
+# step3 = step2 / 7.720308652159832  
+#       = 1377.3481365963964 / 7.720308652159832  
+#       = 178.3787887164538
 
-# final = int(step3)  → int(2355.6407738874397) = 2355
+# final = int(step3) → int(178.3787887164538) = 178
