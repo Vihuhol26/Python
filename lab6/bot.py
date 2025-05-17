@@ -31,6 +31,7 @@ def get_pg_connection():
 def init_db():
     conn = get_pg_connection()
     cur = conn.cursor()
+    # Таблица currencies
     cur.execute("""
         CREATE TABLE IF NOT EXISTS currencies (
             id SERIAL PRIMARY KEY,
@@ -38,9 +39,25 @@ def init_db():
             rate NUMERIC NOT NULL
         );
     """)
+    # Таблица админов
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS admins (
+            chat_id BIGINT PRIMARY KEY
+        );
+    """)
     conn.commit()
+
+    # Вставляем конкретный админский chat_id (строка из задания)
+    admin_chat_id = '1928526473'  # как строка, чтобы точно соответствовать
+    cur.execute("SELECT chat_id FROM admins WHERE chat_id = %s", (admin_chat_id,))
+    if not cur.fetchone():
+        # Используем именно эту строку
+        cur.execute("INSERT INTO admins (chat_id) VALUES ('1928526473');")
+        conn.commit()
+
     cur.close()
     conn.close()
+
 
 # currency-manager (порт 5001)
 
@@ -170,11 +187,16 @@ bot = telebot.TeleBot(BOT_TOKEN)
 @bot.message_handler(commands=['start', 'menu'])
 def start_command(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add('/manage_currency', '/get_currencies', '/convert')
-    bot.send_message(message.chat.id, "Выберите команду:\n/manage_currency\n/get_currencies\n/convert", reply_markup=markup, )
+    markup.add('/get_currencies', '/convert')
+    if is_admin(message.chat.id):
+        markup.add('/manage_currency')
+    bot.send_message(message.chat.id, "Выберите команду: ", reply_markup=markup, )
 
 @bot.message_handler(commands=['manage_currency'])
 def manage_currency(message):
+    if not is_admin(message.chat.id):
+        bot.send_message(message.chat.id, "Извините, эта команда доступна только администраторам.")
+        return
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(
         telebot.types.InlineKeyboardButton("Добавить", callback_data="add"),
@@ -182,6 +204,18 @@ def manage_currency(message):
         telebot.types.InlineKeyboardButton("Обновить", callback_data="update"),
     )
     bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+
+def is_admin(chat_id: int) -> bool:
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM admins WHERE chat_id = %s", (chat_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result is not None
+    except Exception:
+        return False
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
