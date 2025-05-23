@@ -1,9 +1,9 @@
-=== Позитивные тесты ===
+# Позитивные тесты
 (3, 3, 3) → equilateral
 (5, 5, 3) → isosceles
 (3, 4, 5) → nonequilateral
 
-=== Негативные тесты ===
+# Негативные тесты 
 (1, 2, 10) → IncorrectTriangleSides
 (0, 4, 4) → IncorrectTriangleSides
 (-1, 2, 3) → IncorrectTriangleSides
